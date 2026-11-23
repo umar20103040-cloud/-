@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Шашки</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#3a2415;--bg2:#24140a;--ink:#f6e7c8;--panel:#4a2f1c;--accent:#d9a441;--lt:#ecd3a0;--dk:#8a5128;--sel:#ffe27a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2c1a0e;--bg2:#1a0e06;--panel:#3a2315}}
+:root[data-theme="dark"]{--bg:#2c1a0e;--bg2:#1a0e06;--panel:#3a2315}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:Georgia,"Times New Roman",serif;background:radial-gradient(ellipse at top,var(--bg),var(--bg2));display:flex;flex-direction:column;align-items:center;padding:14px 10px 24px;--s:min(11.2vw,66px)}
+h1{margin:4px 0 10px;font-size:28px;letter-spacing:3px;color:var(--accent);text-shadow:0 2px 4px #000a}
+.menu{background:var(--panel);border:1px solid #0006;border-radius:12px;padding:12px 14px;max-width:560px;width:100%;margin-bottom:12px;box-shadow:0 4px 14px #0008}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
+button,select,input{font:inherit;color:var(--ink);background:#2a180c;border:1px solid #c89a52;border-radius:8px;padding:8px 12px}
+button{cursor:pointer;background:linear-gradient(#7a4a24,#53301a)}
+button:hover{filter:brightness(1.15)}
+input{width:110px;text-transform:uppercase;letter-spacing:3px;text-align:center}
+#status{min-height:22px;font-size:15px;text-align:center;margin:4px 0}
+.bar{width:calc(var(--s)*8 + 28px);display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-radius:10px;background:var(--panel);margin:6px 0;border:2px solid transparent}
+.bar.on{border-color:var(--accent)}
+.clock{font-variant-numeric:tabular-nums;font-size:22px;background:#150b05;padding:2px 10px;border-radius:6px}
+.frame{padding:14px;border-radius:10px;background:linear-gradient(135deg,#6b3f1d,#3c2210 50%,#6b3f1d);box-shadow:0 10px 28px #000b,inset 0 0 0 2px #c89a5255}
+#board{display:grid;grid-template-columns:repeat(8,var(--s));grid-template-rows:repeat(8,var(--s));border:2px solid #1a0e06}
+.sq{position:relative;display:flex;align-items:center;justify-content:center}
+.l{background:repeating-linear-gradient(95deg,#0000 0 7px,#a8793a1c 7px 9px),linear-gradient(135deg,#f0dcae,var(--lt))}
+.d{background:repeating-linear-gradient(95deg,#0000 0 6px,#2a14081f 6px 8px),linear-gradient(135deg,#9a5d30,var(--dk))}
+.sq i{position:absolute;font-size:10px;font-style:normal;opacity:.7;color:#2a1608}
+.sq i.n{top:2px;left:3px}.sq i.f{bottom:1px;right:3px}
+.sq.last{box-shadow:inset 0 0 0 3px #ffe27a77}
+.sq.pick{box-shadow:inset 0 0 0 4px var(--sel)}
+.sq.can{cursor:pointer}
+.sq.tgt::after{content:"";width:28%;height:28%;border-radius:50%;background:#ffe27acc;box-shadow:0 0 8px #ffe27a;cursor:pointer}
+.p{width:80%;height:80%;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:calc(var(--s)*.42);box-shadow:0 3px 5px #000a,inset 0 0 0 3px #0003,inset 0 0 0 7px #fff2;pointer-events:none}
+.p.w{background:radial-gradient(circle at 35% 30%,#fffaf0,#e8d4a8 60%,#b99a62);color:#a8741c}
+.p.b{background:radial-gradient(circle at 35% 30%,#6a584c,#2a1e17 60%,#0c0705);color:#e0b24a}
+#over{position:fixed;inset:0;background:#000b;display:none;align-items:center;justify-content:center;z-index:5}
+#over div{background:var(--panel);padding:26px 34px;border-radius:14px;text-align:center;border:2px solid var(--accent)}
+#over h2{margin:0 0 14px;color:var(--accent)}
+small{opacity:.75}
+</style>
+</head>
+<body>
+<h1>♛ ШАШКИ ♛</h1>
+
+<div class="menu">
+  <div class="row">
+    <label>Время на партию:
+      <select id="mins"><option value="0">Без времени</option><option value="3">3 мин</option><option value="5">5 мин</option><option value="10" selected>10 мин</option><option value="15">15 мин</option><option value="30">30 мин</option></select>
+    </label>
+  </div>
+  <div class="row">
+    <button id="bLocal">Играть на одном устройстве</button>
+  </div>
+  <div class="row">
+    <button id="bCreate">Создать онлайн-комнату</button>
+    <span>или</span>
+    <input id="code" maxlength="5" placeholder="КОД">
+    <button id="bJoin">Войти</button>
+  </div>
+  <small>Онлайн: создайте комнату, отправьте другу код — он вводит его и нажимает «Войти». Друг должен открыть эту страницу по вашей ссылке.</small>
+</div>
+
+<div id="status"></div>
+<div class="bar" id="topBar"><span id="topName"></span><span class="clock" id="topClock">--:--</span></div>
+<div class="frame"><div id="board"></div></div>
+<div class="bar" id="botBar"><span id="botName"></span><span class="clock" id="botClock">--:--</span></div>
+<div class="row"><button id="bResign">Сдаться</button><button id="bNew">Новая партия</button></div>
+
+<div id="over"><div><h2 id="overT"></h2><button id="overB">Закрыть</button></div></div>
+
+<script>
+const D=[[-1,-1],[-1,1],[1,-1],[1,1]], ok=(y,x)=>y>=0&&y<8&&x>=0&&x<8, $=id=>document.getElementById(id);
+const NAME={w:"Белые",b:"Чёрные"};
+let S=null, mode=null, me="w", host=true, R=null, sel=null, moves=[], lastTick=0, helloTimer=null;
+
+function fresh(mins){
+  const b=[];for(let r=0;r<8;r++){b.push([]);for(let c=0;c<8;c++)b[r].push((r+c)&1?(r<3?"b":r>4?"w":0):0)}
+  const t=mins>0?mins*60000:null;
+  return{b,turn:"w",wt:t,bt:t,over:null,last:null,why:""};
+}
+function caps(b0,r0,c0,out){
+  const p=b0[r0][c0],m=p.toLowerCase(),opp=m=="w"?"b":"w",b=b0.map(x=>x.slice());b[r0][c0]=0;
+  (function rec(r,c,king,dead,path){
+    let any=false;
+    for(const[dr,dc]of D){
+      let y=r+dr,x=c+dc;
+      if(king)while(ok(y,x)&&b[y][x]===0){y+=dr;x+=dc}
+      if(!ok(y,x))continue;
+      const q=b[y][x];
+      if(!q||q.toLowerCase()!==opp||dead.includes(y*8+x))continue;
+      let ly=y+dr,lx=x+dc;const lands=[];
+      while(ok(ly,lx)&&b[ly][lx]===0){lands.push([ly,lx]);if(!king)break;ly+=dr;lx+=dc}
+      for(const[ay,ax]of lands){any=true;rec(ay,ax,king||(m=="w"?ay==0:ay==7),[...dead,y*8+x],[...path,[ay,ax]])}
+    }
+    if(!any&&dead.length)out.push({path,caps:dead});
+  })(r0,c0,p!==m,[],[[r0,c0]]);
+}
+function quiet(b,r,c,out){
+  const p=b[r][c],k=p!==p.toLowerCase(),f=p=="w"?-1:1;
+  for(const[dr,dc]of D){
+    if(!k&&dr!==f)continue;
+    let y=r+dr,x=c+dc;
+    while(ok(y,x)&&!b[y][x]){out.push({path:[[r,c],[y,x]],caps:[]});if(!k)break;y+=dr;x+=dc}
+  }
+}
+function allMoves(b,turn){
+  const cp=[],qt=[];
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=b[r][c];if(p&&p.toLowerCase()==turn){caps(b,r,c,cp);quiet(b,r,c,qt)}}
+  return cp.length?cp:qt;
+}
+function applyMove(b,mv){
+  const[fr,fc]=mv.path[0],[tr,tc]=mv.path[mv.path.length-1];
+  let p=b[fr][fc];const m=p.toLowerCase();
+  b[fr][fc]=0;mv.caps.forEach(k=>b[k>>3][k&7]=0);
+  if(p===m&&mv.path.some(s=>m=="w"?s[0]==0:s[0]==7))p=m.toUpperCase();
+  b[tr][tc]=p;
+}
+const myTurn=()=>S&&!S.over&&(mode=="local"||(mode=="online"&&S.turn==me));
+
+function play(mv){
+  const now=Date.now();tick(now);
+  applyMove(S.b,mv);
+  S.last=[mv.path[0],mv.path[mv.path.length-1]];
+  S.turn=S.turn=="w"?"b":"w";
+  sel=null;
+  moves=allMoves(S.b,S.turn);
+  if(!moves.length){S.over=S.turn=="w"?"b":"w";S.why="У соперника нет ходов"}
+  lastTick=now;
+  push();render();
+}
+function click(r,c){
+  if(!myTurn())return;
+  const p=S.b[r][c];
+  if(sel){
+    const n=sel.length,cand=moves.filter(m=>m.path.length>n&&sel.every((s,i)=>m.path[i][0]==s[0]&&m.path[i][1]==s[1])&&m.path[n][0]==r&&m.path[n][1]==c);
+    if(cand.length){
+      sel=[...sel,[r,c]];
+      const full=moves.find(m=>m.path.length==sel.length&&cand.includes(m));
+      if(full)play(full);else render();
+      return;
+    }
+  }
+  if(p&&p.toLowerCase()==S.turn&&moves.some(m=>m.path[0][0]==r&&m.path[0][1]==c)){sel=[[r,c]]}else sel=null;
+  render();
+}
+function fmt(ms){if(ms==null)return"∞";ms=Math.max(0,ms);const s=Math.ceil(ms/1000);return String(s/60|0).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
+function tick(now){
+  if(!S||S.over||!lastTick)return;
+  const k=S.turn+"t";
+  if(S[k]!=null){S[k]-=now-lastTick;if(S[k]<=0){S[k]=0;S.over=S.turn=="w"?"b":"w";S.why="Время вышло";push();render()}}
+  lastTick=now;
+}
+setInterval(()=>{if(!S)return;tick(Date.now());clocks()},250);
+function clocks(){
+  const bot=mode=="online"?me:"w",top=bot=="w"?"b":"w";
+  $("topClock").textContent=fmt(S[top+"t"]);$("botClock").textContent=fmt(S[bot+"t"]);
+  $("topBar").classList.toggle("on",!S.over&&S.turn==top);$("botBar").classList.toggle("on",!S.over&&S.turn==bot);
+}
+function render(){
+  if(!S)return;
+  const flip=mode=="online"&&me=="b",bot=flip?"b":"w",top=bot=="w"?"b":"w";
+  $("topName").textContent=NAME[top]+(mode=="online"&&top!=me?" (друг)":"");
+  $("botName").textContent=NAME[bot]+(mode=="online"?" (вы)":"");
+  if(!S.over&&mode&&sel===null)moves=allMoves(S.b,S.turn);
+  const starts=new Set(moves.map(m=>m.path[0][0]*8+m.path[0][1])),tg=new Set();
+  if(sel)moves.forEach(m=>{const n=sel.length;if(m.path.length>n&&sel.every((s,i)=>m.path[i][0]==s[0]&&m.path[i][1]==s[1]))tg.add(m.path[n][0]*8+m.path[n][1])});
+  const can=myTurn();let h="";
+  for(let i=0;i<8;i++)for(let j=0;j<8;j++){
+    const r=flip?7-i:i,c=flip?7-j:j,p=S.b[r][c],dark=(r+c)&1,k=r*8+c;
+    let cl="sq "+(dark?"d":"l");
+    if(S.last&&S.last.some(s=>s[0]==r&&s[1]==c))cl+=" last";
+    if(sel&&sel.some(s=>s[0]==r&&s[1]==c))cl+=" pick";
+    if(can&&(tg.has(k)||(!sel&&starts.has(k))||(sel&&p&&starts.has(k))))cl+=" can";
+    if(tg.has(k))cl+=" tgt";
+    h+=`<div class="${cl}" data-r="${r}" data-c="${c}">`+(j==0?`<i class="n">${8-r}</i>`:"")+(i==7?`<i class="f">${"abcdefgh"[c]}</i>`:"")+(p?`<div class="p ${p.toLowerCase()}">${p!==p.toLowerCase()?"♛":""}</div>`:"")+"</div>";
+  }
+  $("board").innerHTML=h;
+  clocks();
+  let st;
+  if(S.over){st="Партия окончена: победили "+NAME[S.over].toLowerCase()+". "+S.why;$("overT").textContent="Победили "+NAME[S.over].toLowerCase()+"!";$("over").style.display="flex"}
+  else if(mode=="online")st=S.turn==me?"Ваш ход":"Ход друга…";
+  else st="Ход: "+NAME[S.turn].toLowerCase();
+  $("status").textContent=st;
+}
+$("board").addEventListener("click",e=>{const q=e.target.closest(".sq");if(q)click(+q.dataset.r,+q.dataset.c)});
+$("overB").onclick=()=>$("over").style.display="none";
+
+function push(){if(mode=="online"&&R)R.emit("g",{t:"state",s:S}).catch(()=>{})}
+function start(){S=fresh(+$("mins").value);lastTick=Date.now();sel=null;moves=allMoves(S.b,"w");$("over").style.display="none";push();render()}
+$("bLocal").onclick=()=>{leave();mode="local";me="w";start()};
+$("bNew").onclick=()=>{if(!mode)return;if(mode=="online"&&!host){$("status").textContent="Новую партию начинает создатель комнаты";return}start()};
+$("bResign").onclick=()=>{if(!S||S.over)return;const loser=mode=="online"?me:S.turn;S.over=loser=="w"?"b":"w";S.why="Соперник сдался";push();render()};
+
+function leave(){if(R){try{R.leave()}catch(e){}R=null}clearInterval(helloTimer)}
+async function online(code,isHost){
+  const room=window.claude&&await window.claude.use("room").catch(()=>null);
+  if(!room){$("status").textContent="Онлайн-режим здесь недоступен. Откройте страницу по ссылке в Claude или играйте на одном устройстве.";return}
+  leave();
+  try{R=await room.join("chk-"+code)}catch(e){$("status").textContent="Не удалось войти в комнату";return}
+  mode="online";host=isHost;me=isHost?"w":"b";
+  R.on("g",m=>{
+    if(m.isMe||!m.data)return;
+    if(m.data.t=="hello"&&host&&S)push();
+    if(m.data.t=="state"&&m.data.s&&m.data.s.b){S=m.data.s;lastTick=Date.now();sel=null;moves=allMoves(S.b,S.turn);clearInterval(helloTimer);if(!S.over)$("over").style.display="none";render()}
+  });
+  if(host){start();$("status").textContent="Комната "+code+" создана. Отправьте код другу и ждите его хода."}
+  else{S=null;$("status").textContent="Подключаемся к комнате "+code+"…";
+    const hi=()=>R&&R.emit("g",{t:"hello"}).catch(()=>{});hi();helloTimer=setInterval(hi,2500)}
+  if(host){$("status").textContent="Код комнаты: "+code+" — отправьте его другу"}
+}
+$("bCreate").onclick=()=>{const c=Math.random().toString(36).slice(2,6).toUpperCase();$("code").value=c;online(c,true)};
+$("bJoin").onclick=()=>{const c=$("code").value.trim().toUpperCase();if(c.length<3){$("status").textContent="Введите код комнаты";return}online(c,false)};
+$("status").textContent="Выберите режим и начинайте игру";
+</script>
+</body>
+</html>
